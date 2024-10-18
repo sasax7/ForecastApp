@@ -1,0 +1,19 @@
+{
+    "name": "Forecast",
+    "elionaMinVersion": "9.2.0",  
+     "displayName": {
+       "en": "App forecast",
+       "de": "App Prognose"
+     },
+     "description": {
+       "en": "This template can be used to create an app stub for an Eliona environment.",
+       "de": "Diese Vorlage kann verwendet werden um eine App für Eliona zu erstellen."
+     },
+     "dashboardTemplateNames": [
+       "forecast"
+     ],
+     "apiUrl": "v1",
+     "apiSpecificationPath": "/version/openapi.json",
+     "documentationUrl": "https://doc.eliona.io/eliona/referenzen/app-entwicklung",
+     "useEnvironment": [ "CONNECTION_STRING", "API_ENDPOINT", "API_TOKEN" ]
+   }
