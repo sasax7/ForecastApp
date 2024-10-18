@@ -7,54 +7,54 @@ from api.api_calls import (
 )
 import sys
 import os
-import subprocess
+import multiprocessing
+
 
 # Add the current directory to sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-# Now import the module
 from add_forecast_attributes import add_forecast_attributes_to_all_assets
+from forecast import forecast
+from train_and_retrain import train_and_retrain
 
 
-def start_forecast(SessionLocal, Asset):
-    # create_asset(SessionLocal, Asset, "Environment sensor room 1", "brightness", 3)
-
+def start_forecast_and_train(SessionLocal, Asset):
     all_assets = get_all_assets(SessionLocal, Asset)
     all_assets_with_asset_id = add_forecast_attributes_to_all_assets(all_assets)
-    print("All assets with asset ID:", all_assets_with_asset_id)
 
     for asset_id, asset_details in all_assets_with_asset_id:
         print(f"Asset ID: {asset_id}")
-        print(f"Asset Details: {asset_details}")
+        print(f"Asset details: {asset_details}")
 
-        forecast_process = subprocess.Popen(
-            [
-                "forecast/forecast.py",
-                "--asset_id",
-                str(asset_id),
-                "--forecast_length",
-                str(asset_details["forecast_length"]),
-                "--target_column",
-                asset_details["target_attribute"],
-                "--feature_columns",
-                asset_details["feature_attributes"],
-            ]
-        )
-        print(f"Started forecast.py for asset ID {asset_id}")
+        # # Set the sleep time for the retrain cycle (e.g., 24 hours in seconds)
+        # sleep_time = 60  # 1 minute
+        # # Run forecast and train_and_retrain in parallel
+        # forecast_process = multiprocessing.Process(
+        #     target=forecast,
+        #     args=(
+        #         asset_id,
+        #         asset_details["forecast_length"],
+        #         asset_details["target_attribute"],
+        #         asset_details["feature_attributes"],
+        #         sleep_time,
+        #     ),
+        # )
+        sleep_time = 86400  # 24 hours
 
-        # Start `train_and_retrain.py` script with correct arguments
-        train_process = subprocess.Popen(
-            [
-                "forecast/train_and_retrain.py",
-                "--asset_id",
-                str(asset_id),
-                "--start_date",
-                asset_details["start_date"] or "2020-1-1",  # Use the correct start date
-                "--forecast_length",
-                str(asset_details["forecast_length"]),
-                "--target_column",
+        train_process = multiprocessing.Process(
+            target=train_and_retrain,
+            args=(
+                asset_id,
+                asset_details["start_date"] or "2020-1-1",
+                asset_details["forecast_length"],
                 asset_details["target_attribute"],
-                "--feature_columns",
-                asset_details["feature_attributes"],
-            ]
+                asset_details["feature_attributes"] or "",
+                sleep_time,
+            ),
         )
+
+        # Start both processes
+        # forecast_process.start()
+        train_process.start()
+
+        print(f"Started forecast and train_and_retrain for asset ID {asset_id}")

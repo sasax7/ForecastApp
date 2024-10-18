@@ -1,0 +1,102 @@
+[
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T15:58:35.715000",
+        "data": {
+            "co2": 71
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T15:58:35.715000",
+        "data": {
+            "ppl_count": 58
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T15:58:35.715000",
+        "data": {
+            "brightness": 28
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T15:58:35.715000",
+        "data": {
+            "difference": 26.87
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T15:58:35.715000",
+        "data": {
+            "temperature": 20.16
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T16:01:06.797000",
+        "data": {
+            "difference": 26.83
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T16:01:06.797000",
+        "data": {
+            "temperature": 20.38
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T16:01:06.797000",
+        "data": {
+            "co2": 74
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T16:01:06.797000",
+        "data": {
+            "ppl_count": 60
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    },
+    {
+        "asset_id": 388,
+        "subtype": "input",
+        "timestamp": "2024-09-06T16:01:06.797000",
+        "data": {
+            "brightness": 27
+        },
+        "asset_type_name": "VIRTUAL Environment sensor",
+        "client_reference": null
+    }
+]

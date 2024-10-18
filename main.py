@@ -3,13 +3,15 @@ import register_app
 import api.openapi as openapi
 import app.app as app
 
+if __name__ == "__main__":
+    # Ensure that any multiprocessing setup is done properly here
+    db.create_schema_and_table()
 
-db.create_schema_and_table()
+    register_app.Initialize()
 
-register_app.Initialize()
+    openapi.start_api()
 
-openapi.start_api()
+    SessionLocal, Asset = db.setup_database()
 
-SessionLocal, Asset = db.setup_database()
-
-app.start_forecast(SessionLocal, Asset)
+    # Now, call the function to start the forecast and training processes
+    app.start_forecast_and_train(SessionLocal, Asset)

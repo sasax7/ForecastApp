@@ -28,6 +28,7 @@ def get_trend_data(asset_id, start_date, end_date):
             asset_id=asset_id,
             data_subtype="input",
         )
+        print(f"Received {len(result)} data points")
         return result
     except ApiException as e:
         print(f"Exception when calling DataApi->get_data_trends: {e}")
@@ -47,26 +48,33 @@ def fetch_data_in_chunks(asset_id, start_date, end_date):
 
 
 def convert_to_pandas(data):
-    # Process and format the data
-    formatted_data = []
+    # Dictionary to hold the rows, using the timestamp as the key
+    formatted_data = {}
+
     for entry in data:
-        if hasattr(entry, "timestamp") and hasattr(entry, "data"):
-            timestamp = entry.timestamp  # Extracting timestamp
-            data_dict = entry.data  # Extracting data dictionary
-            data_dict["timestamp"] = timestamp
-            formatted_data.append(data_dict)
+        # Extract timestamp and data
+        timestamp = entry.timestamp
+        data_dict = entry.data
 
-    # Convert to pandas DataFrame
-    df = pd.DataFrame(formatted_data)
+        # If this timestamp already exists, update the existing row
+        if timestamp in formatted_data:
+            formatted_data[timestamp].update(data_dict)
+        else:
+            # Create a new row for this timestamp
+            formatted_data[timestamp] = data_dict
 
-    # Drop rows with any NaN values
-    df.dropna(inplace=True)
-    print(df)
-    # Sort the DataFrame by the 'timestamp' column
-    df.sort_values(by="timestamp", inplace=True)
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True).dt.tz_convert(
-        "Europe/Berlin"
-    )
+    # Convert the dictionary to a pandas DataFrame
+    df = pd.DataFrame.from_dict(formatted_data, orient="index")
+
+    # Set the index (timestamp) as a proper datetime index
+    df.index = pd.to_datetime(df.index)
+
+    # Optional: convert the index to a specific timezone (e.g., Europe/Berlin)
+    df.index = df.index.tz_convert("Europe/Berlin")
+
+    # Reset index to have 'timestamp' as a column
+    df.reset_index(inplace=True)
+    df.rename(columns={"index": "timestamp"}, inplace=True)
 
     return df
 
@@ -161,5 +169,6 @@ def fetch_pandas_data(
 ):
     # Fetch the data
     data = fetch_data_in_chunks(asset_id, start_date, end_date)
+    print(data[:10])
     df = convert_to_pandas(data)
     return df

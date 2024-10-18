@@ -129,7 +129,7 @@ def add_forecast_attributes_to_all_assets(all_assets):
         print(f"Asset: {asset}")
 
         # Accessing dictionary values using keys
-        forecast_name_suffix = f"_forecast_{asset["forecast_length"]}"
+        forecast_name_suffix = f"_forecast_{asset['forecast_length']}"
 
         # Assuming add_forecast_attributes returns asset_id
         asset_id = add_forecast_attributes(
