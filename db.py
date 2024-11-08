@@ -47,11 +47,14 @@ def create_schema_and_table():
             target_attribute VARCHAR(255) NOT NULL,
             feature_attributes JSONB,
             forecast_length INT NOT NULL,
-            start_date DATE,
+            start_date VARCHAR(255),
             parameters JSONB,
+            datalength INT,
             hyperparameters JSONB,
-            latest_timestamp TIMESTAMP,
+            latest_timestamp VARCHAR(255),
             context_length INT,
+            processing_status VARCHAR(255),
+            scaler BYTEA,
             UNIQUE(gai, target_attribute, forecast_length)  -- Enforce uniqueness of the combination
         );
         """
@@ -67,79 +70,3 @@ def create_schema_and_table():
 
     except OperationalError as e:
         print(f"Connection failed: {e}")
-
-
-# def check_and_create_forecast_app(db_url):
-#     try:
-#         # Establish connection to the PostgreSQL database
-#         connection = psycopg2.connect(db_url)
-#         cursor = connection.cursor()
-
-#         # Check if the 'forecast' app already exists in eliona_app table
-#         cursor.execute(
-#             "SELECT app_name FROM eliona_app WHERE app_name = %s", ("forecast",)
-#         )
-#         app = cursor.fetchone()
-
-#         if app:
-#             print("App 'forecast' already exists.")
-#         else:
-#             print("App 'forecast' does not exist. Checking eliona_store...")
-
-#             # Check if the 'forecast' entry exists in eliona_store table
-#             cursor.execute(
-#                 "SELECT app_name FROM eliona_store WHERE app_name = %s", ("forecast",)
-#             )
-#             store_entry = cursor.fetchone()
-
-#             if not store_entry:
-#                 print(
-#                     "App 'forecast' does not exist in eliona_store. Creating new entry..."
-#                 )
-
-#                 # Insert a new 'forecast' entry into eliona_store with appropriate values
-#                 insert_store_query = """
-#                 INSERT INTO eliona_store (app_name, category, version, metadata, created_at)
-#                 VALUES (%s, %s, %s, %s, now())
-#                 """
-
-#                 # Update the category with a valid value
-#                 cursor.execute(
-#                     insert_store_query,
-#                     (
-#                         "forecast",  # app_name
-#                         "app",  # Replace with valid category
-#                         "1.0",  # version (example value)
-#                         "{}",  # metadata (default empty JSON)
-#                     ),
-#                 )
-
-#                 connection.commit()
-#                 print("App 'forecast' added to eliona_store.")
-
-#             # Now insert the app into eliona_app
-#             insert_app_query = """
-#             INSERT INTO eliona_app (app_name, enable, created_at)
-#             VALUES (%s, %s, now())
-#             """
-#             cursor.execute(insert_app_query, ("forecast", True))
-
-#             # Commit the changes to the database
-#             connection.commit()
-
-#             print("App 'forecast' created successfully in eliona_app.")
-
-#             # Now create schema and table for forecast
-#             create_schema_and_table(db_url)
-
-#         # Close the cursor and connection
-#         cursor.close()
-#         connection.close()
-
-#     except OperationalError as e:
-#         print(f"Connection failed: {e}")
-
-
-# if __name__ == "__main__":
-#     db_url = os.getenv("CONNECTION_STRING")
-#     check_and_create_forecast_app(db_url)

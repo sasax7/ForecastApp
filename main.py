@@ -14,4 +14,4 @@ if __name__ == "__main__":
     SessionLocal, Asset = db.setup_database()
 
     # Now, call the function to start the forecast and training processes
-    app.start_forecast_and_train(SessionLocal, Asset)
+    app.background_worker(SessionLocal, Asset)

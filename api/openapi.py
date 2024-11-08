@@ -20,9 +20,12 @@ class AssetModel(BaseModel):
     forecast_length: int
     start_date: Optional[str]  # Allow date to be optional
     parameters: Optional[dict]  # JSONB field
+    datalength: Optional[int]
     hyperparameters: Optional[dict]  # JSONB field
     latest_timestamp: Optional[str]  # Timestamp
     context_length: Optional[int]  # Allow optional
+    processing_status: Optional[str]  # Allow optional
+    scaler: Optional[bytes]  # Allow optional
 
     class Config:
         from_attributes = True  # Updated for Pydantic v2
@@ -115,9 +118,12 @@ def create_api(DATABASE_URL: str):
             forecast_length=asset.forecast_length,
             start_date=asset.start_date,
             parameters=asset.parameters,
+            datalength=asset.datalength,
             hyperparameters=asset.hyperparameters,
             latest_timestamp=asset.latest_timestamp,
             context_length=asset.context_length,
+            processing_status=asset.processing_status or "new",
+            scaler=asset.scaler,
         )
         db.execute(new_asset)
         db.commit()
@@ -140,9 +146,12 @@ def create_api(DATABASE_URL: str):
                 forecast_length=asset.forecast_length,
                 start_date=asset.start_date,
                 parameters=asset.parameters,
+                datalength=asset.datalength,
                 hyperparameters=asset.hyperparameters,
                 latest_timestamp=asset.latest_timestamp,
                 context_length=asset.context_length,
+                processing_status=asset.processing_status,
+                scaler=asset.scaler,
             )
         )
         db.execute(update_query)
