@@ -20,8 +20,8 @@ def background_worker(SessionLocal, Asset):
     create_asset(
         SessionLocal,
         Asset,
-        "Environment sensor room 1",
-        "temperature",
+        "K01_WP01-f957bc0acd6b3994",
+        "Aussentemperatur",
         5,
     )
     with SessionLocal() as session:

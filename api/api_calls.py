@@ -34,6 +34,7 @@ def create_asset_table(metadata, engine):
         Column("context_length", Integer),
         Column("processing_status", String(255)),
         Column("scaler", BLOB),
+        Column("state", BLOB),
         schema="forecast",
         autoload_with=engine,
     )
@@ -119,6 +120,7 @@ def create_asset(
     context_length: int = None,
     processing_status: str = "new",
     scaler: bytes = None,
+    state: bytes = None,
 ):
     logging.info(
         f"Creating new asset with GAI {gai}, target attribute {target_attribute}, and forecast length {forecast_length}"
@@ -138,6 +140,7 @@ def create_asset(
         context_length=context_length,
         processing_status=processing_status,
         scaler=scaler,
+        state=state,
     )
 
     with SessionLocal() as session:
@@ -168,6 +171,7 @@ def update_asset(
     context_length: int = None,
     processing_status: str = None,
     scaler: bytes = None,
+    state: bytes = None,
 ):
     logging.info(f"Updating asset with ID {id}")
 
@@ -202,6 +206,8 @@ def update_asset(
             update_values["processing_status"] = processing_status
         if scaler is not None:
             update_values["scaler"] = scaler
+        if state is not None:
+            update_values["state"] = state
 
         if not update_values:
             logging.warning(f"No values provided to update for asset ID {id}")

@@ -53,10 +53,12 @@ def train_and_retrain(
     context_length = load_contextlength(SessionLocal, Asset, asset_details)
 
     def train_and_handle():
-        model, scaler = train_lstm_model(
+        model, scaler, last_timestamp = train_lstm_model(
             asset_details,
             asset_id,
             df,
+            SessionLocal=SessionLocal,
+            Asset=Asset,
             context_length=context_length,
             forecast_length=forecast_length,
             model_save_path=model_filename,
@@ -76,7 +78,7 @@ def train_and_retrain(
             print(f"Model {model_filename} exists")
             data_length = load_datalength(SessionLocal, Asset, asset_details)
             print("Data length", data_length)
-            df, last_timestamp = fetch_pandas_data(
+            df = fetch_pandas_data(
                 asset_id, start_date, end_date, attribute=target_column
             )
             if len(df) > data_length * 1.15:
@@ -85,11 +87,11 @@ def train_and_retrain(
         else:
             print("Model does not exist")
 
-            df, last_timestamp = fetch_pandas_data(
+            df = fetch_pandas_data(
                 asset_id, start_date, end_date, attribute=target_column
             )
 
-            print(df.head())
+            print(df.tail(20))
             train_and_handle()
 
         # Wait for the specified sleep time before running again

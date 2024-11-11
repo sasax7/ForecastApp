@@ -9,13 +9,7 @@ from tensorflow.keras.layers import LSTM
 import pickle
 
 
-def saveState(model, filepath):
-    """
-    Saves the states (hidden and cell states) of all stateful LSTM layers in the model to a file.
-
-    :param model: The Keras model containing stateful LSTM layers
-    :param filepath: Path to the file where states will be saved
-    """
+def saveState(SessionLocal, Asset, model, asset_details):
     states = {}
     for layer in model.layers:
         if isinstance(layer, LSTM) and layer.stateful:
@@ -25,21 +19,22 @@ def saveState(model, filepath):
             else:
                 print(f"Warning: Layer '{layer.name}' has no initialized states.")
 
-    # Save the states to the specified file
-    with open(filepath, "wb") as f:
-        pickle.dump(states, f)
-    print(f"States saved to {filepath}")
+    serialized_states = pickle.dumps(states)
+    update_asset(
+        SessionLocal,
+        Asset,
+        id=asset_details["id"],
+        state=serialized_states,
+    )
 
 
-def loadState(model, filepath):
-    """
-    Loads the states (hidden and cell states) from a file and sets them in the model's stateful LSTM layers.
-
-    :param model: The Keras model containing stateful LSTM layers
-    :param filepath: Path to the file from which states will be loaded
-    """
-    with open(filepath, "rb") as f:
-        states = pickle.load(f)
+def loadState(SessionLocal, Asset, model, asset_details):
+    asset = get_asset_by_id(SessionLocal, Asset, asset_details["id"])
+    if asset.state:
+        states = pickle.loads(asset.state)
+    else:
+        print("No saved states found for the given asset.")
+        return
 
     # Set the states in the model's LSTM layers
     for layer in model.layers:

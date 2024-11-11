@@ -49,6 +49,8 @@ def train_lstm_model(
     asset_details,
     asset_id,
     data,
+    SessionLocal,
+    Asset,
     context_length,
     forecast_length,
     model_save_path,
@@ -71,13 +73,13 @@ def train_lstm_model(
     :param batch_size: Batch size for training (needed for stateful LSTMs)
     :return: Trained model and scaler
     """
-    X, y, scaler = prepare_data(
+    X, y, scaler, last_timestamp = prepare_data(
         data, context_length, forecast_length, asset_details["target_attribute"]
     )
+    print("Last sequences from training data:", X[-3:])
     X_train, X_val, y_train, y_val = train_test_split(
         X, y, test_size=validation_split, shuffle=False
     )
-
     model = build_lstm_model(
         context_length, num_lstm_layers=2, lstm_units=50, batch_size=batch_size
     )
@@ -90,21 +92,18 @@ def train_lstm_model(
         model.fit(
             X_train,
             y_train,
-            epochs=1,
+            epochs=epochs,
             batch_size=batch_size,
             validation_data=(X_val, y_val),
             callbacks=[early_stopping],
             shuffle=False,
         )
 
-        saveState(
-            model,
-            f"{asset_id}_{asset_details['target_attribute']}_{asset_details['forecast_length']}_lstm_states.pkl",
-        )
+        saveState(SessionLocal, Asset, model, asset_details)
         for layer in model.layers:
             if hasattr(layer, "reset_states") and callable(layer.reset_states):
                 layer.reset_states()
 
     model.save(model_save_path)
 
-    return model, scaler
+    return model, scaler, last_timestamp

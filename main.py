@@ -7,7 +7,7 @@ if __name__ == "__main__":
     # Ensure that any multiprocessing setup is done properly here
     db.create_schema_and_table()
 
-    register_app.Initialize()
+    # register_app.Initialize()
 
     openapi.start_api()
 

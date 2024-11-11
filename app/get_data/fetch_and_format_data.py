@@ -76,14 +76,11 @@ def convert_to_pandas(data):
     # **Optional: Sort the DataFrame by index (timestamp)**
     df.sort_index(inplace=True)
 
-    # **Extract the last timestamp**
-    last_timestamp = df.index[-1]
-
     # Reset index to have 'timestamp' as a column
     df.reset_index(inplace=True)
     df.rename(columns={"index": "timestamp"}, inplace=True)
 
-    return df, last_timestamp
+    return df
 
 
 def filter_by_attribute(data, attribute):
@@ -103,32 +100,19 @@ def fetch_pandas_data(
     # Fetch the data
     data = fetch_data_in_chunks(asset_id, start_date, end_date)
     data = filter_by_attribute(data, attribute)
-    df, last_timestamp = convert_to_pandas(data)
-    return df, last_timestamp
+    df = convert_to_pandas(data)
+    return df
 
 
-def prepare_data(data, context_length, forecast_length, taget_attribute):
+def prepare_data(data, context_length, forecast_length, target_attribute):
     """
     Prepares data for training a TensorFlow LSTM model, including scaling.
-
-    Parameters:
-    - data (pd.DataFrame): A pandas DataFrame with at least two columns:
-        - 'timestamp': The timestamp of each observation.
-    - context_length (int): The number of past time steps to use as input.
-    - forecast_length (int): The number of time steps ahead to predict.
-      The target is the value that is forecast_length steps ahead of the end of the context window.
-
-    Returns:
-    - X (np.ndarray): Input features of shape (num_samples, context_length, 1).
-    - Y (np.ndarray): Target values of shape (num_samples, 1).
-    - scaler (sklearn.preprocessing object): The scaler fitted on the 'brightness' data.
     """
-
     # Ensure the data is sorted by timestamp
     data = data.sort_values("timestamp").reset_index(drop=True)
 
     # Extract the target variable as a numpy array and reshape for scaler
-    values = data[taget_attribute].values.reshape(-1, 1)
+    values = data[target_attribute].values.reshape(-1, 1)
 
     # Scale the data
     scaler = MinMaxScaler(feature_range=(0, 1))
@@ -162,121 +146,80 @@ def prepare_data(data, context_length, forecast_length, taget_attribute):
     # Reshape Y to be [samples, 1]
     Y = Y.reshape((Y.shape[0], 1))
 
-    return X, Y, scaler
+    # Extract the last Y's timestamp
+    last_timestamp = data["timestamp"].iloc[len(data) - forecast_length]
+    last_timestamp = pd.to_datetime(last_timestamp)
+
+    return X, Y, scaler, last_timestamp
 
 
 def prepare_data_for_forecast(
-    data, context_length, forecast_length, scaler, timestep_in_file, target_attribute
+    data, context_length, forecast_length, scaler, last_timestamp, target_attribute
 ):
-    """
-    Prepares data for forecasting with a TensorFlow LSTM model.
-
-    Parameters:
-    - data (pd.DataFrame): A pandas DataFrame with 'timestamp' and target attribute columns.
-    - context_length (int): The number of past time steps to use as input.
-    - forecast_length (int): The number of time steps ahead to predict.
-    - scaler (sklearn.preprocessing object): The fitted scaler for transforming data.
-    - timestep_in_file (datetime): The timestamp up to which data has been processed.
-
-    Returns:
-    - X (np.ndarray): Input features of shape (num_samples, context_length, 1).
-    - Y (np.ndarray): Target values of shape (num_samples, 1).
-    - target_timestamps (list): Timestamps corresponding to each target value.
-    - X_last (np.ndarray): The last input feature sequence for making the next prediction.
-    - new_next_timestamp (datetime): The timestamp for the next prediction.
-    """
     # Ensure the data is sorted by timestamp
     data = data.sort_values("timestamp").reset_index(drop=True)
-    print("data", data.head(20))
-    print("timestep_in_file", timestep_in_file)
+    print("Data Head:\n", data.head(20))
+    print("Last Timestamp from training data:", last_timestamp)
 
     # Convert 'timestamp' to datetime if not already
     data["timestamp"] = pd.to_datetime(data["timestamp"])
 
-    # Identify the last index where timestamp <= timestep_in_file
-    past_data = data[data["timestamp"] <= timestep_in_file]
-    if not past_data.empty:
-        if len(past_data) >= context_length:
-            last_past_index = past_data.index[-1]
-            # Start from the next index after last_past_index
-            new_data = data[data.index > last_past_index]
-        else:
-            # Not enough past data for context, use all data
-            print("Not enough past data for context. Using all available data.")
-            new_data = data
-    else:
-        # No past data, use all data
-        print("No past data found. Using all available data.")
-        new_data = data
-
-    print("New data to process:", new_data.head(20))
-
-    # Ensure there is data to process
-    if new_data.empty:
-        print("No new data after the provided timestep.")
-        return None, None, None, None, None
-
-    # Extract the target variable as a numpy array and scale
+    # Use the loaded scaler to transform values
     values = data[target_attribute].values.reshape(-1, 1)
     scaled_values = scaler.transform(values).flatten()
 
-    # Initialize lists
-    X = []
-    Y = []
+    # Find the index corresponding to last_timestamp
+    try:
+        last_index = data[data["timestamp"] == last_timestamp].index[0]
+        last_index = last_index + 1  # Move to the next index
+    except IndexError:
+        # If exact match not found, find the closest timestamp after last_timestamp
+        indices = data[data["timestamp"] > last_timestamp].index
+        print("No exact match found. Closest timestamps found at indices:", indices)
+        if len(indices) == 0:
+            print("No new data available after the last timestamp.")
+            return None, None, None, None
+        last_index = indices[0]
+
+    # Start index to include context_length steps before last_index
+    start_index = last_index - context_length + 1
+    if start_index < 0:
+        start_index = 0
+
+    # Prepare sequences
+    X_new = []
     target_timestamps = []
 
-    # Iterate through the new data to create X and Y
-    for i in new_data.index:
-        current_timestamp = data["timestamp"].iloc[i]
-        if current_timestamp <= timestep_in_file:
-            continue  # Skip data before or equal to the last processed timestamp
+    for i in range(start_index, len(scaled_values) - context_length + 1):
+        x = scaled_values[i : i + context_length]
+        X_new.append(x)
+        timestamp = data["timestamp"].iloc[i + context_length - 1]
+        target_timestamps.append(timestamp)
 
-        # Determine the y_index based on forecast_length
-        y_index = i + forecast_length - 1
-        if y_index >= len(scaled_values):
-            continue  # Not enough data for y
+    if not X_new:
+        print("No valid input sequences found after filtering.")
+        return None, None, None, None
 
-        # Ensure there is enough data for context
-        if i - context_length < 0:
-            print(f"Skipping index {i} due to insufficient context data.")
-            continue
+    X_new = np.array(X_new).reshape((len(X_new), context_length, 1))
 
-        # Extract x and y
-        x = scaled_values[i - context_length : i]
-        y = scaled_values[y_index]
-
-        # Append to lists
-        X.append(x)
-        Y.append(y)
-        target_timestamps.append(data["timestamp"].iloc[y_index])
-
-    # Convert to numpy arrays
-    if not X:
-        print("No valid input sequences found.")
-        return None, None, None, None, None
-
-    X = np.array(X).reshape((len(X), context_length, 1))
-    Y = np.array(Y).reshape((len(Y), 1))
-    print("X shape:", X.shape)
-    print("Y shape:", Y.shape)
-    print("Sample X:", X[:1])
-    print("Sample Y:", Y[:1])
-
-    # Prepare `X_last` for the next prediction
-    if len(scaled_values) >= context_length:
-        X_last = scaled_values[-context_length:].reshape((1, context_length, 1))
+    # Separate X_new into X_update and X_last
+    if len(X_new) > 1:
+        X_update = X_new[:-1]
+        X_last = X_new[-1].reshape((1, context_length, 1))
+        last_y_timestamp_new = target_timestamps[-2]
     else:
-        X_last = None
-        print("Not enough data to prepare X_last.")
+        X_update = np.empty((0, context_length, 1))
+        X_last = X_new[-1].reshape((1, context_length, 1))
+        last_y_timestamp_new = target_timestamps[-1]
 
     # Calculate `new_next_timestamp`
     if len(data) >= 2:
         timestamp_diff = data["timestamp"].iloc[-1] - data["timestamp"].iloc[-2]
-        new_next_timestamp = data["timestamp"].iloc[-1] + (
-            timestamp_diff * forecast_length
+        new_next_timestamp = (
+            data["timestamp"].iloc[-1] + timestamp_diff * forecast_length
         )
     else:
         new_next_timestamp = None
         print("Insufficient data for timestamp calculation.")
 
-    return X, Y, target_timestamps, X_last, new_next_timestamp
+    return X_update, X_last, new_next_timestamp, last_y_timestamp_new

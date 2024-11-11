@@ -26,6 +26,7 @@ class AssetModel(BaseModel):
     context_length: Optional[int]  # Allow optional
     processing_status: Optional[str]  # Allow optional
     scaler: Optional[bytes]  # Allow optional
+    state: Optional[bytes]  # Allow optional
 
     class Config:
         from_attributes = True  # Updated for Pydantic v2
@@ -124,6 +125,7 @@ def create_api(DATABASE_URL: str):
             context_length=asset.context_length,
             processing_status=asset.processing_status or "new",
             scaler=asset.scaler,
+            state=asset.state,
         )
         db.execute(new_asset)
         db.commit()
@@ -152,6 +154,7 @@ def create_api(DATABASE_URL: str):
                 context_length=asset.context_length,
                 processing_status=asset.processing_status,
                 scaler=asset.scaler,
+                state=asset.state,
             )
         )
         db.execute(update_query)

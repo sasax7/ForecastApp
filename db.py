@@ -55,6 +55,7 @@ def create_schema_and_table():
             context_length INT,
             processing_status VARCHAR(255),
             scaler BYTEA,
+            state BYTEA,
             UNIQUE(gai, target_attribute, forecast_length)  -- Enforce uniqueness of the combination
         );
         """

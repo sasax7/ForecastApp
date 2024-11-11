@@ -20,7 +20,6 @@ asset_types_api = AssetTypesApi(api_client)
 def get_asset_id_by_gai(gai):
     try:
         assets = assets_api.get_assets()
-
         for asset in assets:
             if asset.global_asset_identifier == gai:
                 return asset.id
@@ -32,6 +31,7 @@ def get_asset_id_by_gai(gai):
 
 def get_asset_type_name(asset_id):
     try:
+        print(f"Asset ID: {asset_id}")
         asset = assets_api.get_asset_by_id(asset_id)
         return asset.asset_type
     except ApiException as e:
@@ -95,6 +95,7 @@ def add_attribute_to_asset_type(asset_type_name, attribute_info):
 
 def add_forecast_attributes(gai, attribute_to_forecast, forecast_name_suffix):
     # Get the asset type name of the given asset
+    print(f"Global Asset Identifier: {gai}")
     asset_id = get_asset_id_by_gai(gai)
     asset_type_name = get_asset_type_name(asset_id)
     print(f"Asset type name: {asset_type_name}")
@@ -126,7 +127,6 @@ def add_forecast_attributes(gai, attribute_to_forecast, forecast_name_suffix):
 def add_forecast_attributes_to_all_assets(all_assets):
     all_assets_with_asset_id = []
     for asset in all_assets:
-        print(f"Asset: {asset}")
 
         # Accessing dictionary values using keys
         forecast_name_suffix = f"_forecast_{asset['forecast_length']}"
