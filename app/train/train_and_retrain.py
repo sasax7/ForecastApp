@@ -59,6 +59,7 @@ def train_and_retrain(
             df,
             SessionLocal=SessionLocal,
             Asset=Asset,
+            tz=tz,
             context_length=context_length,
             forecast_length=forecast_length,
             model_save_path=model_filename,
@@ -79,7 +80,11 @@ def train_and_retrain(
             data_length = load_datalength(SessionLocal, Asset, asset_details)
             print("Data length", data_length)
             df = fetch_pandas_data(
-                asset_id, start_date, end_date, attribute=target_column
+                asset_id,
+                start_date,
+                end_date,
+                target_column,
+                asset_details["feature_attributes"],
             )
             if len(df) > data_length * 1.15:
                 print("Retraining model")
@@ -88,7 +93,11 @@ def train_and_retrain(
             print("Model does not exist")
 
             df = fetch_pandas_data(
-                asset_id, start_date, end_date, attribute=target_column
+                asset_id,
+                start_date,
+                end_date,
+                target_column,
+                asset_details["feature_attributes"],
             )
 
             print(df.tail(20))

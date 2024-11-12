@@ -23,6 +23,11 @@ def background_worker(SessionLocal, Asset):
         "K01_WP01-f957bc0acd6b3994",
         "Aussentemperatur",
         5,
+        feature_attributes=[
+            "Ladekreis Temperatur RL",
+            "Ladekreis Temperatur VL",
+            "Quelle Temperatur RL",
+        ],
     )
     with SessionLocal() as session:
         # Fetch all assets marked as 'new'

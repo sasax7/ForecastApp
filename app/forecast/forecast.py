@@ -56,6 +56,7 @@ def forecast(
     id = asset_details["id"]
     forecast_length = asset_details["forecast_length"]
     target_column = asset_details["target_attribute"]
+    feature_columns = asset_details["feature_attributes"]
     tz = pytz.timezone("Europe/Berlin")
     model_filename = f"LSTM_model_{asset_id}_{target_column}_{forecast_length}.keras"
     batch_size = 1  # Setting batch size to 1 for stateful LSTM
@@ -83,7 +84,7 @@ def forecast(
             print("timestamp_diff_buffer", timestamp_diff_buffer)
 
             df = fetch_pandas_data(
-                asset_id, new_start_date, new_end_date, target_column
+                asset_id, new_start_date, new_end_date, target_column, feature_columns
             )
 
             if df.empty:
@@ -99,10 +100,10 @@ def forecast(
                     scaler,
                     timestep_in_file,
                     asset_details["target_attribute"],
+                    asset_details["feature_attributes"],
                 )
             )
             print("Prepared data")
-
             if X_update is None and X_last is None:
                 print("No new X sequences to process. Sleeping...")
                 time.sleep(sleep_time)
@@ -113,7 +114,7 @@ def forecast(
                 print("First sequences from forecasting data:", X_update[:3])
                 for i in range(len(X_update)):
                     x = X_update[i].reshape(
-                        (1, context_length, 1)
+                        (1, context_length, X_update.shape[2])
                     )  # Shape: (1, context_length, 1)
                     _ = model.predict(
                         x, batch_size=batch_size
@@ -125,7 +126,9 @@ def forecast(
                 print("last x sequence:", X_last)
                 print("Forecasting the next value using the latest X sequence.")
                 next_prediction_scaled = model.predict(X_last, batch_size=batch_size)
-                next_prediction = scaler.inverse_transform(next_prediction_scaled)
+                next_prediction = scaler[target_column].inverse_transform(
+                    next_prediction_scaled
+                )
                 print("Next prediction:", next_prediction[0][0])
                 print("Predicted next timestamp:", new_next_timestamp)
 

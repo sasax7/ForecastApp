@@ -83,106 +83,158 @@ def convert_to_pandas(data):
     return df
 
 
-def filter_by_attribute(data, attribute):
-    filtered_data = []
-    for entry in data:
-        if attribute in entry.data:
-            filtered_data.append(entry)
-    return filtered_data
-
-
 def fetch_pandas_data(
     asset_id,
     start_date,
     end_date,
-    attribute,
+    target_attribute,
+    feature_attributes,
 ):
-    # Fetch the data
+    # Fetch all data without filtering by attributes
     data = fetch_data_in_chunks(asset_id, start_date, end_date)
-    data = filter_by_attribute(data, attribute)
+
+    # Convert data to pandas DataFrame
     df = convert_to_pandas(data)
+
+    # Ensure 'timestamp' is datetime and sorted
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df.sort_values("timestamp", inplace=True)
+
+    # Select only the target and feature attributes
+    attributes = [target_attribute] + feature_attributes
+    df = df[["timestamp"] + attributes]
+
+    # Forward fill missing values for feature attributes
+    df[feature_attributes] = df[feature_attributes].ffill()
+
+    # Keep only the rows where the target attribute is not missing
+    df = df[df[target_attribute].notna()]
+
+    # Align feature attributes based on target attribute timestamps
+    df = df.reset_index(drop=True)
+
+    # Drop any remaining NaN values
+    df.dropna(inplace=True)
+
     return df
 
 
-def prepare_data(data, context_length, forecast_length, target_attribute):
+def prepare_data(
+    data, context_length, forecast_length, target_attribute, feature_attributes
+):
     """
     Prepares data for training a TensorFlow LSTM model, including scaling.
+    Includes sequences of context_length for each attribute.
+
+    :param data: Pandas DataFrame containing 'timestamp', target_attribute, and feature_attributes
+    :param context_length: The number of timesteps used for context (input window)
+    :param forecast_length: The number of timesteps ahead to predict
+    :param target_attribute: The name of the target attribute (string)
+    :param feature_attributes: List of feature attribute names (list of strings)
+    :return: X, Y, scalers dictionary, last_timestamp
     """
     # Ensure the data is sorted by timestamp
     data = data.sort_values("timestamp").reset_index(drop=True)
 
-    # Extract the target variable as a numpy array and reshape for scaler
-    values = data[target_attribute].values.reshape(-1, 1)
+    # Combine target and feature attributes
+    all_attributes = [target_attribute] + feature_attributes
 
-    # Scale the data
-    scaler = MinMaxScaler(feature_range=(0, 1))
-    scaled_values = scaler.fit_transform(values).flatten()
+    # Initialize a scaler for each attribute and scale the data
+    scalers = {}
+    scaled_data = pd.DataFrame()
+    for attr in all_attributes:
+        scaler = MinMaxScaler(feature_range=(0, 1))
+        values = data[attr].values.reshape(-1, 1)
+        scaled_values = scaler.fit_transform(values).flatten()
+        scaled_data[attr] = scaled_values
+        scalers[attr] = scaler  # Store the scaler for each attribute
 
     X = []
     Y = []
 
     # Calculate the number of samples that can be generated
-    total_samples = len(scaled_values) - context_length - forecast_length + 1
+    total_samples = len(scaled_data) - context_length - forecast_length + 1
 
     # Loop over the dataset to create sequences
     for i in range(total_samples):
-        # Extract the input sequence of length 'context_length'
-        x = scaled_values[i : i + context_length]
+        # Extract input sequences for all attributes
+        x = scaled_data[all_attributes].iloc[i : i + context_length].values
         # Extract the target value that is 'forecast_length' steps ahead
         y_index = i + context_length + forecast_length - 1
-        if y_index < len(scaled_values):
-            y = scaled_values[y_index]
+        if y_index < len(scaled_data):
+            y = scaled_data[target_attribute].iloc[y_index]
             X.append(x)
             Y.append(y)
         else:
             break  # Break if the target index is out of bounds
 
     # Convert lists to numpy arrays
-    X = np.array(X)
-    Y = np.array(Y)
-
-    # Reshape X to be [samples, time steps, features] for LSTM input
-    X = X.reshape((X.shape[0], X.shape[1], 1))
-    # Reshape Y to be [samples, 1]
-    Y = Y.reshape((Y.shape[0], 1))
+    X = np.array(X)  # Shape: [samples, context_length, num_features]
+    Y = np.array(Y)  # Shape: [samples, ]
 
     # Extract the last Y's timestamp
     last_timestamp = data["timestamp"].iloc[len(data) - forecast_length]
     last_timestamp = pd.to_datetime(last_timestamp)
 
-    return X, Y, scaler, last_timestamp
+    return X, Y, scalers, last_timestamp
 
 
 def prepare_data_for_forecast(
-    data, context_length, forecast_length, scaler, last_timestamp, target_attribute
+    data,
+    context_length,
+    forecast_length,
+    scalers,
+    last_timestamp,
+    target_attribute,
+    feature_attributes,
 ):
+    """
+    Prepares data for forecasting using a trained LSTM model.
+    Includes sequences of context_length for each attribute.
+
+    :param data: Pandas DataFrame containing 'timestamp', target_attribute, and feature_attributes
+    :param context_length: The number of timesteps used for context (input window)
+    :param forecast_length: The number of timesteps ahead to predict
+    :param scalers: Dictionary of scalers for each attribute
+    :param last_timestamp: The last timestamp from the training data
+    :param target_attribute: The name of the target attribute (string)
+    :param feature_attributes: List of feature attribute names (list of strings)
+    :return: X_update, X_last, new_next_timestamp, last_y_timestamp_new
+    """
     # Ensure the data is sorted by timestamp
     data = data.sort_values("timestamp").reset_index(drop=True)
-    print("Data Head:\n", data.head(20))
-    print("Last Timestamp from training data:", last_timestamp)
 
     # Convert 'timestamp' to datetime if not already
     data["timestamp"] = pd.to_datetime(data["timestamp"])
 
-    # Use the loaded scaler to transform values
-    values = data[target_attribute].values.reshape(-1, 1)
-    scaled_values = scaler.transform(values).flatten()
+    # Combine target and feature attributes
+    all_attributes = [target_attribute] + feature_attributes
+    scaled_data = pd.DataFrame()
+
+    # Use the loaded scalers to transform values
+    for attr in all_attributes:
+        if attr in data.columns:
+            values = data[attr].values.reshape(-1, 1)
+            scaler = scalers[attr]
+            scaled_values = scaler.transform(values).flatten()
+            scaled_data[attr] = scaled_values
+        else:
+            print(f"Attribute '{attr}' not found in data. Filling with zeros.")
+            scaled_data[attr] = 0.0  # Or handle appropriately
 
     # Find the index corresponding to last_timestamp
-    try:
-        last_index = data[data["timestamp"] == last_timestamp].index[0]
-        last_index = last_index + 1  # Move to the next index
-    except IndexError:
-        # If exact match not found, find the closest timestamp after last_timestamp
-        indices = data[data["timestamp"] > last_timestamp].index
-        print("No exact match found. Closest timestamps found at indices:", indices)
-        if len(indices) == 0:
-            print("No new data available after the last timestamp.")
-            return None, None, None, None
-        last_index = indices[0]
+
+    # If exact match not found, find the closest timestamp after last_timestamp
+    indices = data[data["timestamp"] > last_timestamp].index
+    print("No exact match found. Closest timestamps found at indices:", indices)
+    if len(indices) == 0:
+        print("No new data available after the last timestamp.")
+        return None, None, None, None
+    print("iding indices[0]", indices[:5])
+    last_index = indices[0]
 
     # Start index to include context_length steps before last_index
-    start_index = last_index - context_length + 1
+    start_index = last_index - context_length
     if start_index < 0:
         start_index = 0
 
@@ -190,26 +242,26 @@ def prepare_data_for_forecast(
     X_new = []
     target_timestamps = []
 
-    for i in range(start_index, len(scaled_values) - context_length + 1):
-        x = scaled_values[i : i + context_length]
+    for i in range(start_index, len(scaled_data) - context_length):
+        x = scaled_data[all_attributes].iloc[i : i + context_length].values
         X_new.append(x)
-        timestamp = data["timestamp"].iloc[i + context_length - 1]
+        timestamp = data["timestamp"].iloc[i + context_length]
         target_timestamps.append(timestamp)
 
     if not X_new:
         print("No valid input sequences found after filtering.")
         return None, None, None, None
 
-    X_new = np.array(X_new).reshape((len(X_new), context_length, 1))
+    X_new = np.array(X_new)  # Shape: [samples, context_length, num_features]
 
     # Separate X_new into X_update and X_last
     if len(X_new) > 1:
         X_update = X_new[:-1]
-        X_last = X_new[-1].reshape((1, context_length, 1))
+        X_last = X_new[-1].reshape((1, context_length, len(all_attributes)))
         last_y_timestamp_new = target_timestamps[-2]
     else:
-        X_update = np.empty((0, context_length, 1))
-        X_last = X_new[-1].reshape((1, context_length, 1))
+        X_update = np.empty((0, context_length, len(all_attributes)))
+        X_last = X_new[-1].reshape((1, context_length, len(all_attributes)))
         last_y_timestamp_new = target_timestamps[-1]
 
     # Calculate `new_next_timestamp`
