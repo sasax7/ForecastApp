@@ -103,6 +103,11 @@ def forecast(
                     asset_details["feature_attributes"],
                 )
             )
+            save_latest_timestamp(
+                SessionLocal, Asset, last_y_timestamp, tz, asset_details
+            )
+
+            print("Latest timestamp updated.")
             print("Prepared data")
             if X_update is None and X_last is None:
                 print("No new X sequences to process. Sleeping...")
@@ -142,11 +147,7 @@ def forecast(
                 )
 
                 # Update the latest timestamp to last_y_timestamp
-                save_latest_timestamp(
-                    SessionLocal, Asset, last_y_timestamp, tz, asset_details
-                )
 
-                print("Latest timestamp updated.")
             else:
                 print("X_last is None. Skipping forecasting.")
 

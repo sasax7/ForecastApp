@@ -28,6 +28,13 @@ def background_worker(SessionLocal, Asset):
             "Ladekreis Temperatur VL",
             "Quelle Temperatur RL",
         ],
+        parameters={
+            "epochs": 51,
+            "patience": 4,
+            "validation_split": 0.2,
+            "learning_rate": 0.0001,
+            # Add more parameters as needed
+        },
     )
     with SessionLocal() as session:
         # Fetch all assets marked as 'new'

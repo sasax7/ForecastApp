@@ -53,7 +53,7 @@ def train_and_retrain(
     context_length = load_contextlength(SessionLocal, Asset, asset_details)
 
     def train_and_handle():
-        model, scaler, last_timestamp = train_lstm_model(
+        model = train_lstm_model(
             asset_details,
             asset_id,
             df,
@@ -63,12 +63,8 @@ def train_and_retrain(
             context_length=context_length,
             forecast_length=forecast_length,
             model_save_path=model_filename,
-            epochs=10,
-            batch_size=batch_size,
         )
-        save_scaler(SessionLocal, Asset, scaler, asset_details)
-        print("last timestamp", last_timestamp)
-        save_latest_timestamp(SessionLocal, Asset, last_timestamp, tz, asset_details)
+
         print("Length X", len(df))
         save_datalength(SessionLocal, Asset, len(df), asset_details)
 

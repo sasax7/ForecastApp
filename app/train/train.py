@@ -4,7 +4,7 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 from app.get_data.fetch_and_format_data import prepare_data
-from app.get_data.api_calls import saveState, save_latest_timestamp
+from app.get_data.api_calls import saveState, save_latest_timestamp, save_scaler
 import numpy as np
 
 
@@ -44,6 +44,7 @@ class CustomCallback(tf.keras.callbacks.Callback):
                 self.tz,
                 self.asset_details,
             )
+
             saveState(self.SessionLocal, self.Asset, self.model, self.asset_details)
         else:
             print(f"Validation loss did not improve from {self.best_val_loss}.")
@@ -64,24 +65,43 @@ def build_lstm_model(
     from tensorflow.keras.layers import Dropout, BatchNormalization, Bidirectional
 
     # Set default values
-    num_lstm_layers = parameters.get("num_lstm_layers", 2)
-    lstm_units = parameters.get("lstm_units", 50)
+    num_lstm_layers = parameters.get("num_lstm_layers") or 2
+    lstm_units = parameters.get("lstm_units") or 50
 
-    activation = parameters.get("activation", "tanh")
-    learning_rate = parameters.get("learning_rate", 0.001)
-    optimizer_type = parameters.get("optimizer_type", "adam")
-    clipnorm = parameters.get("clipnorm", 1.0)
-    loss = parameters.get("loss", "mse")
-    dropout_rate = parameters.get("dropout_rate", 0.0)
-    recurrent_dropout_rate = parameters.get("recurrent_dropout_rate", 0.0)
-    num_dense_layers = parameters.get("num_dense_layers", 1)
-    dense_units = parameters.get("dense_units", 50)
-    dense_activation = parameters.get("dense_activation", "relu")
-    use_batch_norm = parameters.get("use_batch_norm", False)
-    bidirectional = parameters.get("bidirectional", False)
-    regularization = parameters.get("regularization", None)
-    metrics = parameters.get("metrics", ["mse"])
+    activation = parameters.get("activation") or "tanh"
+    learning_rate = parameters.get("learning_rate") or 0.001
+    optimizer_type = parameters.get("optimizer_type") or "adam"
+    clipnorm = parameters.get("clipnorm")
+    loss = parameters.get("loss") or "mean_squared_error"
+    dropout_rate = parameters.get("dropout_rate") or 0.0
+    recurrent_dropout_rate = parameters.get("recurrent_dropout_rate") or 0.0
+    num_dense_layers = parameters.get("num_dense_layers") or 0
+    dense_units = parameters.get("dense_units") or 50
+    dense_activation = parameters.get("dense_activation") or "relu"
+    use_batch_norm = parameters.get("use_batch_norm") or False
+    bidirectional = parameters.get("bidirectional") or False
+    regularization = parameters.get("regularization") or None
+    metrics = parameters.get("metrics") or ["mse"]
     batch_size = 1
+    print("all parameters:")
+    print("num_lstm_layers", num_lstm_layers)
+    print("lstm_units", lstm_units)
+    print("activation", activation)
+    print("learning_rate", learning_rate)
+    print("optimizer_type", optimizer_type)
+    print("clipnorm", clipnorm)
+    print("loss", loss)
+    print("dropout_rate", dropout_rate)
+    print("recurrent_dropout_rate", recurrent_dropout_rate)
+    print("num_dense_layers", num_dense_layers)
+    print("dense_units", dense_units)
+    print("dense_activation", dense_activation)
+    print("use_batch_norm", use_batch_norm)
+    print("bidirectional", bidirectional)
+    print("regularization", regularization)
+    print("metrics", metrics)
+    print("batch_size", batch_size)
+
     inputs = Input(batch_shape=(batch_size, context_length, num_features))
     x = inputs
 
@@ -142,8 +162,11 @@ def build_lstm_model(
     optimizer_class = optimizer_mapping.get(
         optimizer_type.lower(), tf.keras.optimizers.Adam
     )
-    optimizer = optimizer_class(learning_rate=learning_rate, clipnorm=clipnorm)
+    optimizer_kwargs = {"learning_rate": learning_rate}
+    if clipnorm is not None:
+        optimizer_kwargs["clipnorm"] = clipnorm
 
+    optimizer = optimizer_class(**optimizer_kwargs)
     # Compile the model
     model.compile(optimizer=optimizer, loss=loss, metrics=metrics if metrics else [])
 
@@ -160,18 +183,15 @@ def train_lstm_model(
     context_length,
     forecast_length,
     model_save_path,
-    epochs=10,
-    validation_split=0.2,
-    patience=3,
 ):
     batch_size = 1
-    parameters = asset_details["parameters"]
-    if parameters:
-        epochs = parameters.get("epochs", epochs)
-        patience = parameters.get("patience", patience)
-        validation_split = parameters.get("validation_split", validation_split)
-        num_lstm_layers = parameters.get("num_lstm_layers", 2)
-        lstm_units = parameters.get("lstm_units", 50)
+    parameters = asset_details["parameters"] or {}
+
+    epochs = parameters.get("epochs") or 50
+    patience = parameters.get("patience") or 5
+    validation_split = parameters.get("validation_split") or 0.2
+    num_lstm_layers = parameters.get("num_lstm_layers") or 2
+    lstm_units = parameters.get("lstm_units") or 50
     # Prepare data
     print(f"Training Parameters:")
     print(f"  Epochs: {epochs}")
@@ -184,6 +204,7 @@ def train_lstm_model(
         asset_details["target_attribute"],
         asset_details["feature_attributes"],
     )
+    save_scaler(SessionLocal, Asset, scaler, asset_details)
     print("X tail training", X[-3:])
     print("y tail training", y[-3:])
     X_train, X_val, y_train, y_val = train_test_split(
@@ -222,4 +243,4 @@ def train_lstm_model(
     )
 
     # Return the best model and other details
-    return model, scaler, last_timestamp
+    return model

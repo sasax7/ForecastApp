@@ -226,13 +226,15 @@ def prepare_data_for_forecast(
 
     # If exact match not found, find the closest timestamp after last_timestamp
     indices = data[data["timestamp"] > last_timestamp].index
-    print("No exact match found. Closest timestamps found at indices:", indices)
+
     if len(indices) == 0:
         print("No new data available after the last timestamp.")
         return None, None, None, None
     print("iding indices[0]", indices[:5])
     last_index = indices[0]
-
+    print("last_timestamp", last_timestamp)
+    print("last_index", last_index)
+    print("timesamp at last_index", data["timestamp"].iloc[last_index])
     # Start index to include context_length steps before last_index
     start_index = last_index - context_length
     if start_index < 0:
@@ -258,7 +260,7 @@ def prepare_data_for_forecast(
     if len(X_new) > 1:
         X_update = X_new[:-1]
         X_last = X_new[-1].reshape((1, context_length, len(all_attributes)))
-        last_y_timestamp_new = target_timestamps[-2]
+        last_y_timestamp_new = target_timestamps[-1]
     else:
         X_update = np.empty((0, context_length, len(all_attributes)))
         X_last = X_new[-1].reshape((1, context_length, len(all_attributes)))
