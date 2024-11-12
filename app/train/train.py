@@ -5,6 +5,39 @@ from tensorflow.keras.callbacks import EarlyStopping
 from sklearn.model_selection import train_test_split
 from app.get_data.fetch_and_format_data import prepare_data
 from app.get_data.api_calls import saveState
+import numpy as np
+
+
+class CustomCallback(tf.keras.callbacks.Callback):
+    def __init__(self, model_save_path, SessionLocal, Asset, asset_details):
+        super(CustomCallback, self).__init__()
+        self.model_save_path = model_save_path
+        self.SessionLocal = SessionLocal
+        self.Asset = Asset
+        self.asset_details = asset_details
+        self.best_val_loss = np.Inf
+
+    def on_epoch_end(self, epoch, logs=None):
+        # Reset states after each epoch
+        for layer in self.model.layers:
+            if hasattr(layer, "reset_states") and callable(layer.reset_states):
+                layer.reset_states()
+
+        # Check if 'val_loss' improved
+        current_val_loss = logs.get("val_loss")
+        if current_val_loss is not None and current_val_loss < self.best_val_loss:
+            print(
+                f"Validation loss improved from {self.best_val_loss} to {current_val_loss}. Saving model."
+            )
+            self.best_val_loss = current_val_loss
+            # Save the model
+            self.model.save(self.model_save_path)
+            # Call saveState function
+            saveState(self.SessionLocal, self.Asset, self.model, self.asset_details)
+        else:
+            print(f"Validation loss did not improve from {self.best_val_loss}.")
+
+        # TODO: implement saving latest timestamp as well
 
 
 def build_lstm_model(context_length, num_lstm_layers=2, lstm_units=50, batch_size=1):
@@ -59,51 +92,40 @@ def train_lstm_model(
     patience=3,
     batch_size=1,
 ):
-    """
-    Trains a stateful LSTM model and returns the trained model and scaler.
-
-    :param asset_id: Identifier for the asset (used for saving models/scalers)
-    :param data: Pandas DataFrame containing the 'timestamp' and 'brightness' columns
-    :param context_length: The number of timesteps used for context (input window)
-    :param forecast_length: The number of timesteps ahead to predict (not used here since we're predicting one value)
-    :param model_save_path: Path to save the trained model
-    :param epochs: Number of training epochs
-    :param validation_split: Fraction of data to use for validation
-    :param patience: Patience for early stopping
-    :param batch_size: Batch size for training (needed for stateful LSTMs)
-    :return: Trained model and scaler
-    """
+    # Prepare data
     X, y, scaler, last_timestamp = prepare_data(
         data, context_length, forecast_length, asset_details["target_attribute"]
     )
-    print("Last sequences from training data:", X[-3:])
     X_train, X_val, y_train, y_val = train_test_split(
         X, y, test_size=validation_split, shuffle=False
     )
+
+    # Build model
     model = build_lstm_model(
         context_length, num_lstm_layers=2, lstm_units=50, batch_size=batch_size
     )
+
+    # Callbacks
     early_stopping = EarlyStopping(
         monitor="val_loss", patience=patience, restore_best_weights=True
     )
+    custom_callback = CustomCallback(
+        model_save_path=model_save_path,
+        SessionLocal=SessionLocal,
+        Asset=Asset,
+        asset_details=asset_details,
+    )
 
-    for epoch in range(epochs):
-        print(f"Epoch {epoch+1}/{epochs}")
-        model.fit(
-            X_train,
-            y_train,
-            epochs=epochs,
-            batch_size=batch_size,
-            validation_data=(X_val, y_val),
-            callbacks=[early_stopping],
-            shuffle=False,
-        )
+    # Train model
+    model.fit(
+        X_train,
+        y_train,
+        epochs=epochs,
+        batch_size=batch_size,
+        validation_data=(X_val, y_val),
+        callbacks=[early_stopping, custom_callback],
+        shuffle=False,
+    )
 
-        saveState(SessionLocal, Asset, model, asset_details)
-        for layer in model.layers:
-            if hasattr(layer, "reset_states") and callable(layer.reset_states):
-                layer.reset_states()
-
-    model.save(model_save_path)
-
+    # Return the best model and other details
     return model, scaler, last_timestamp

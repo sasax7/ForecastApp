@@ -30,7 +30,7 @@ def train_and_retrain(
     forecast_length = asset_details["forecast_length"]
     target_column = asset_details["target_attribute"]
     tz = pytz.timezone("Europe/Berlin")
-    start_date_str = asset_details["start_date"] or "2024-11-1"
+    start_date_str = asset_details["start_date"] or "2024-11-6"
     print("start_date_str", start_date_str)
     start_date = tz.localize(datetime.strptime(start_date_str, "%Y-%m-%d"))
     print("start_date", start_date)
@@ -62,7 +62,7 @@ def train_and_retrain(
             context_length=context_length,
             forecast_length=forecast_length,
             model_save_path=model_filename,
-            epochs=1,
+            epochs=10,
             batch_size=batch_size,
         )
         save_scaler(SessionLocal, Asset, scaler, asset_details)
