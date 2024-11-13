@@ -51,6 +51,7 @@ def create_schema_and_table():
             parameters JSONB,
             datalength INT,
             hyperparameters JSONB,
+            trainingparameters JSONB,
             latest_timestamp VARCHAR(255),
             context_length INT,
             processing_status VARCHAR(255),

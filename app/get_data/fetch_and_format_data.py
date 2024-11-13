@@ -101,6 +101,8 @@ def fetch_pandas_data(
     df.sort_values("timestamp", inplace=True)
 
     # Select only the target and feature attributes
+    if feature_attributes is None:
+        feature_attributes = []
     attributes = [target_attribute] + feature_attributes
     df = df[["timestamp"] + attributes]
 
@@ -137,6 +139,8 @@ def prepare_data(
     data = data.sort_values("timestamp").reset_index(drop=True)
 
     # Combine target and feature attributes
+    if feature_attributes is None:
+        feature_attributes = []
     all_attributes = [target_attribute] + feature_attributes
 
     # Initialize a scaler for each attribute and scale the data
@@ -208,6 +212,8 @@ def prepare_data_for_forecast(
     data["timestamp"] = pd.to_datetime(data["timestamp"])
 
     # Combine target and feature attributes
+    if feature_attributes is None:
+        feature_attributes = []
     all_attributes = [target_attribute] + feature_attributes
     scaled_data = pd.DataFrame()
 

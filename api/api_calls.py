@@ -30,6 +30,7 @@ def create_asset_table(metadata, engine):
         Column("parameters", JSON),
         Column("datalength", Integer),
         Column("hyperparameters", JSON),
+        Column("trainingparameters", JSON),
         Column("latest_timestamp", TIMESTAMP),
         Column("context_length", Integer),
         Column("processing_status", String(255)),
@@ -116,6 +117,7 @@ def create_asset(
     parameters: dict = None,
     datalength: int = None,
     hyperparameters: dict = None,
+    trainingparameters: dict = None,
     latest_timestamp: str = None,
     context_length: int = None,
     processing_status: str = "new",
@@ -136,6 +138,7 @@ def create_asset(
         parameters=parameters,
         datalength=datalength,
         hyperparameters=hyperparameters,
+        trainingparameters=trainingparameters,
         latest_timestamp=latest_timestamp,
         context_length=context_length,
         processing_status=processing_status,
@@ -167,6 +170,7 @@ def update_asset(
     parameters: dict = None,
     datalength: int = None,
     hyperparameters: dict = None,
+    trainingparameters: dict = None,
     latest_timestamp: str = None,
     context_length: int = None,
     processing_status: str = None,
@@ -198,6 +202,8 @@ def update_asset(
             update_values["datalength"] = datalength
         if hyperparameters is not None:
             update_values["hyperparameters"] = hyperparameters
+        if trainingparameters is not None:
+            update_values["trainingparameters"] = trainingparameters
         if latest_timestamp is not None:
             update_values["latest_timestamp"] = latest_timestamp
         if context_length is not None:

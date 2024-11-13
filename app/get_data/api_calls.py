@@ -146,3 +146,29 @@ def load_scaler(SessionLocal, Asset, asset_details):
     else:
         print("No scaler found for the given asset.")
         return None
+
+
+def save_parameters(SessionLocal, Asset, parameters, asset_details):
+    """
+    Updates parameters in asset_details while preserving unspecified ones.
+
+    Args:
+        SessionLocal: Database session
+        Asset: Asset model
+        parameters: New parameters to update
+        asset_details: Current asset details
+    """
+    # Get existing parameters or initialize empty dict
+    existing_parameters = asset_details.get("parameters", {}) or {}
+
+    # Update only specified parameters
+    if parameters:
+        existing_parameters.update(parameters)
+
+    # Save updated parameters
+    update_asset(
+        SessionLocal, Asset, id=asset_details["id"], parameters=existing_parameters
+    )
+
+    # Update asset_details with new parameters
+    asset_details["parameters"] = existing_parameters

@@ -22,6 +22,7 @@ class AssetModel(BaseModel):
     parameters: Optional[dict]  # JSONB field
     datalength: Optional[int]
     hyperparameters: Optional[dict]  # JSONB field
+    trainingparameters: Optional[dict]  # JSONB field
     latest_timestamp: Optional[str]  # Timestamp
     context_length: Optional[int]  # Allow optional
     processing_status: Optional[str]  # Allow optional
@@ -121,6 +122,7 @@ def create_api(DATABASE_URL: str):
             parameters=asset.parameters,
             datalength=asset.datalength,
             hyperparameters=asset.hyperparameters,
+            trainingparameters=asset.trainingparameters,
             latest_timestamp=asset.latest_timestamp,
             context_length=asset.context_length,
             processing_status=asset.processing_status or "new",
@@ -150,6 +152,7 @@ def create_api(DATABASE_URL: str):
                 parameters=asset.parameters,
                 datalength=asset.datalength,
                 hyperparameters=asset.hyperparameters,
+                trainingparameters=asset.trainingparameters,
                 latest_timestamp=asset.latest_timestamp,
                 context_length=asset.context_length,
                 processing_status=asset.processing_status,
