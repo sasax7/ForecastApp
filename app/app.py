@@ -38,8 +38,18 @@ def background_worker(SessionLocal, Asset):
             "rain",
             "cloud_cover",
             "wind_speed_10m",
+            "hour_of_day_sin",
+            "hour_of_day_cos",
+            "day_of_week_sin",
+            "day_of_week_cos",
+            "day_of_month_sin",
+            "day_of_month_cos",
+            "month_of_year_sin",
+            "month_of_year_cos",
+            "day_of_year_sin",
+            "day_of_year_cos",
         ],
-        start_date="2010-01-01",
+        start_date="2024-10-01",
     )
     create_asset(
         SessionLocal,
@@ -62,7 +72,7 @@ def background_worker(SessionLocal, Asset):
             "open_diff",
             "volume_diff",
         ],
-        start_date="2010-01-01",
+        start_date="2024-10-01",
     )
     with SessionLocal() as session:
         # Fetch all assets marked as 'new'
@@ -79,12 +89,12 @@ def background_worker(SessionLocal, Asset):
             1,
             processing_status="new",
         )
-        # update_asset(
-        #     SessionLocal,
-        #     Asset,
-        #     2,
-        #     processing_status="new",
-        # )
+        update_asset(
+            SessionLocal,
+            Asset,
+            2,
+            processing_status="new",
+        )
     while True:
         with SessionLocal() as session:
             # Fetch all assets marked as 'new'

@@ -21,6 +21,11 @@ from app.get_data.fetch_and_format_data import (
     prepare_data_for_forecast,
 )
 from app.data_to_eliona.write_into_eliona import write_into_eliona
+from app.data_to_eliona.create_asset_to_save_models import (
+    load_model_from_eliona,
+    save_model_to_eliona,
+    model_exists,
+)
 
 
 @tf.function
@@ -58,14 +63,14 @@ def forecast(
     target_column = asset_details["target_attribute"]
     feature_columns = asset_details["feature_attributes"]
     tz = pytz.timezone("Europe/Berlin")
-    model_filename = f"LSTM_model_{asset_id}_{target_column}_{forecast_length}.keras"
+    model_filename = f"LSTM_model_{asset_id}_{target_column}_{forecast_length}.h5"
     batch_size = 1  # Setting batch size to 1 for stateful LSTM
     timestamp_diff_buffer = timedelta(days=5)
 
     while True:
-        if os.path.exists(model_filename):
+        if model_exists(model_filename):
             print(f"Loading existing model from {model_filename}")
-            model = tf.keras.models.load_model(model_filename)
+            model = load_model_from_eliona(model_filename)
             loadState(SessionLocal, Asset, model, asset_details)
             # Load the scaler
             scaler = load_scaler(SessionLocal, Asset, asset_details)
@@ -152,7 +157,7 @@ def forecast(
                 print("X_last is None. Skipping forecasting.")
 
             # Save the updated model after processing
-            model.save(model_filename)
+            save_model_to_eliona(model, model_filename)
             saveState(SessionLocal, Asset, model, asset_details)
             print(f"Model saved to {model_filename}.")
         else:

@@ -6,6 +6,7 @@ from kerastuner.engine import trial as trial_module
 import traceback
 import shutil
 import os
+from app.data_to_eliona.create_asset_to_save_models import save_model_to_eliona
 
 
 class CustomCallback(tf.keras.callbacks.Callback):
@@ -32,7 +33,7 @@ class CustomCallback(tf.keras.callbacks.Callback):
             )
             self.best_val_loss = current_val_loss
             # Save the model
-            self.model.save(self.model_save_path)
+            save_model_to_eliona(self.model, self.model_save_path)
             # Call saveState function
             save_latest_timestamp(
                 self.SessionLocal,

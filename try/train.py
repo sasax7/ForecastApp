@@ -8,12 +8,11 @@ from sklearn.model_selection import train_test_split
 import os
 import argparse
 import time
-
-
-@tf.keras.utils.register_keras_serializable()
-def custom_quartic_loss(y_true, y_pred):
-    error = y_true - y_pred
-    return tf.reduce_mean(tf.pow(error, 4))
+from app.data_to_eliona.create_asset_to_save_models import (
+    load_model_from_eliona,
+    save_model_to_eliona,
+    model_exists,
+)
 
 
 def load_series(
@@ -47,7 +46,7 @@ def build_model(input_shape, batch_size, learning_rate):
     model.add(Dense(1))  # Single output unit for regression
     model.compile(
         optimizer=Adam(learning_rate=learning_rate),
-        loss=custom_quartic_loss,
+        loss="mean_squared_error",
         metrics=["mean_absolute_error"],
     )
     return model
@@ -83,7 +82,7 @@ def safe_save_model(model, filepath, attempts=5, delay=1):
     """Attempt to save the model with retries on failure due to file access issues."""
     for attempt in range(attempts):
         try:
-            model.save(filepath)
+            save_model_to_eliona(model, filepath)
             print(f"Model saved successfully to {filepath}")
             return True
         except PermissionError as e:
@@ -147,9 +146,7 @@ def evaluate_and_predict_model(
     buffer,
     model_filename,
 ):
-    model = tf.keras.models.load_model(
-        model_filename, custom_objects={"custom_quartic_loss": custom_quartic_loss}
-    )
+    model = load_model_from_eliona(model_filename)
     predictions = model.predict(X_val, batch_size=batch_size).flatten()
 
     total_predictions = len(predictions)
@@ -259,7 +256,7 @@ def main():
     # best so far: learning_rate = 0.00001, patience = 3, buffer = 0.5
 
     # Model filename
-    model_filename = f"learningrate{learning_rate}_patience{patience}_model.keras"
+    model_filename = f"learningrate{learning_rate}_patience{patience}_model.h5"
 
     # Load data
     (
@@ -280,7 +277,7 @@ def main():
     )
 
     # Check if model exists
-    if not os.path.exists(model_filename):
+    if not model_exists(model_filename):
         # Build, train, and save the model
         input_shape = (X_train.shape[1], X_train.shape[2])
         train_and_save_model(

@@ -19,6 +19,7 @@ from app.get_data.api_calls import (
     load_datalength,
     save_scaler,
 )
+from app.data_to_eliona.create_asset_to_save_models import model_exists
 
 
 def train_and_retrain(
@@ -34,7 +35,7 @@ def train_and_retrain(
     print("start_date_str", start_date_str)
     start_date = tz.localize(datetime.strptime(start_date_str, "%Y-%m-%d"))
     print("start_date", start_date)
-    model_filename = f"LSTM_model_{asset_id}_{target_column}_{forecast_length}.keras"
+    model_filename = f"LSTM_model_{asset_id}_{target_column}_{forecast_length}.h5"
 
     batch_size = 1
 
@@ -71,7 +72,7 @@ def train_and_retrain(
     while True:
         end_date = tz.localize(datetime.now())
 
-        if os.path.exists(model_filename):
+        if model_exists(model_filename):
             print(f"Model {model_filename} exists")
             data_length = load_datalength(SessionLocal, Asset, asset_details)
             print("Data length", data_length)

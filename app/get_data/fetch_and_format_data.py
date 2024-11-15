@@ -99,29 +99,132 @@ def fetch_pandas_data(
     # Ensure 'timestamp' is datetime and sorted
     df["timestamp"] = pd.to_datetime(df["timestamp"])
     df.sort_values("timestamp", inplace=True)
+    df.reset_index(drop=True, inplace=True)
 
-    # Select only the target and feature attributes
+    # Initialize feature_attributes if None
     if feature_attributes is None:
         feature_attributes = []
+
+    # List of possible time-based features with sine and cosine
+    time_features = [
+        "second_of_minute_sin",
+        "second_of_minute_cos",
+        "minute_of_hour_sin",
+        "minute_of_hour_cos",
+        "hour_of_day_sin",
+        "hour_of_day_cos",
+        "day_of_week_sin",
+        "day_of_week_cos",
+        "day_of_month_sin",
+        "day_of_month_cos",
+        "month_of_year_sin",
+        "month_of_year_cos",
+        "day_of_year_sin",
+        "day_of_year_cos",
+    ]
+
+    # Identify which time-based features are requested
+    requested_time_features = [
+        feat for feat in feature_attributes if feat in time_features
+    ]
+
+    # Remove time-based features from feature_attributes (since we'll process them separately)
+    feature_attributes = [
+        feat for feat in feature_attributes if feat not in time_features
+    ]
+
+    # Select only the target and remaining feature attributes
     attributes = [target_attribute] + feature_attributes
+
+    # Initialize sets and dictionaries to keep track of computations
+    computed_time_components = set()
+    base_feature_periods = {
+        "second_of_minute": 60,
+        "minute_of_hour": 60,
+        "hour_of_day": 24,
+        "day_of_week": 7,
+        "day_of_month": 31,
+        "month_of_year": 12,
+        "day_of_year": 366,
+    }
+
+    # Process time-based features
+    for feat in requested_time_features:
+        # Check if the feature ends with '_sin' or '_cos'
+        if feat.endswith("_sin"):
+            base_feat = feat[:-4]  # Remove '_sin'
+            transformation = "sin"
+        elif feat.endswith("_cos"):
+            base_feat = feat[:-4]  # Remove '_cos'
+            transformation = "cos"
+        else:
+            # Not a recognized time feature with '_sin' or '_cos'
+            continue
+
+        # If the base time component has not been computed yet, compute it
+        if base_feat not in computed_time_components:
+            # Compute the time component
+            if base_feat == "second_of_minute":
+                df[base_feat] = df["timestamp"].dt.second
+            elif base_feat == "minute_of_hour":
+                df[base_feat] = df["timestamp"].dt.minute
+            elif base_feat == "hour_of_day":
+                df[base_feat] = df["timestamp"].dt.hour
+            elif base_feat == "day_of_week":
+                df[base_feat] = df["timestamp"].dt.weekday  # Monday=0, Sunday=6
+            elif base_feat == "day_of_month":
+                df[base_feat] = df["timestamp"].dt.day
+            elif base_feat == "month_of_year":
+                df[base_feat] = df["timestamp"].dt.month
+            elif base_feat == "day_of_year":
+                df[base_feat] = df["timestamp"].dt.dayofyear
+            else:
+                continue  # Unrecognized base feature
+            computed_time_components.add(base_feat)
+
+        # Get the period associated with the base feature
+        period = base_feature_periods.get(base_feat)
+        if period is None:
+            continue  # Unrecognized base feature, skip
+
+        # Apply the sine or cosine transformation
+        if transformation == "sin":
+            df[feat] = np.sin(2 * np.pi * df[base_feat] / period)
+        elif transformation == "cos":
+            df[feat] = np.cos(2 * np.pi * df[base_feat] / period)
+
+        # Add the transformed feature to the attributes list
+        attributes.append(feat)
+
+        # Optionally, drop the base time component column if both transformations are computed or not needed
+        # Check if both '_sin' and '_cos' variants are requested
+        other_transformation = "cos" if transformation == "sin" else "sin"
+        other_feat = base_feat + "_" + other_transformation
+        if (other_feat in requested_time_features and other_feat in df.columns) or (
+            other_feat not in requested_time_features
+        ):
+            # Both transformations have been computed or the other is not requested; drop base feature
+            df.drop(columns=[base_feat], inplace=True)
+
+    # Handle missing attributes by filling with zeros
     missing_attributes = [col for col in attributes if col not in df.columns]
     for col in missing_attributes:
         df[col] = 0
-    print("attributes", attributes)
+
+    # Keep only the relevant columns
     df = df[["timestamp"] + attributes]
 
-    # Forward fill missing values for feature attributes
-    df[feature_attributes] = df[feature_attributes].ffill()
+    # Forward fill missing values for feature attributes (if any)
+    if feature_attributes:
+        df[feature_attributes] = df[feature_attributes].ffill()
 
     # Keep only the rows where the target attribute is not missing
     df = df[df[target_attribute].notna()]
 
-    # Align feature attributes based on target attribute timestamps
-    df = df.reset_index(drop=True)
-
     # Drop any remaining NaN values
     df.dropna(inplace=True)
 
+    print("df.head()", df.head())
     return df
 
 
