@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.layers import LSTM, Dense, Input
 from tensorflow.keras.models import Model
+import json
 
 
 def build_lstm_model(
@@ -17,12 +18,13 @@ def build_lstm_model(
 
     from tensorflow.keras.layers import Dropout, BatchNormalization
 
-    if hasattr(parameters, "values"):
-        parameters = parameters.values
-    else:
-        parameters = parameters
+    if isinstance(parameters, str):
+        parameters = json.loads(parameters)
+    elif not isinstance(parameters, dict):
+        parameters = dict(parameters)
 
     # Set default values
+    print("parameters", parameters)
     num_lstm_layers = parameters.get("num_lstm_layers", 2)
     lstm_units = parameters.get("lstm_units", 50)
 

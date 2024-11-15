@@ -8,11 +8,12 @@ from app.get_data.api_calls import (
     save_scaler,
     save_parameters,
 )
+
 import numpy as np
 from app.train.lstmHyperModel import LSTMHyperModel
 from kerastuner.tuners import BayesianOptimization
 from app.train.build_standard_lstm import build_lstm_model
-from app.train.callbacks import CustomCallback, HyperModelCheckpointCallback
+from app.train.callbacks import CustomCallback, HyperModelCheckpointCallback, MyTuner
 
 
 def train_lstm_model(
@@ -36,7 +37,7 @@ def train_lstm_model(
     objective = trainingparameters.get("objective", "val_loss")
 
     hyperparameters = asset_details["hyperparameters"] or {}
-    hyperparameters_percent_data = hyperparameters.get("percent_data", 0.05)
+    hyperparameters_percent_data = hyperparameters.get("percent_data", 0.01)
     max_trials = hyperparameters.get("max_trials", 100)
     project_name = f"hyperparameters_model_{asset_id}_{asset_details['target_attribute']}_{forecast_length}"
 
@@ -76,7 +77,7 @@ def train_lstm_model(
             parameters=parameters,
             hyperparameters=hyperparameters,
         )
-        tuner = BayesianOptimization(
+        tuner = MyTuner(
             hypermodel,
             objective=objective,
             max_trials=max_trials,
@@ -114,7 +115,7 @@ def train_lstm_model(
         model = build_lstm_model(
             context_length,
             num_features,
-            best_hyperparameters,
+            best_hyperparameters.values,
         )
 
         # Train the model with the full dataset

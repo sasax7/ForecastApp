@@ -104,6 +104,10 @@ def fetch_pandas_data(
     if feature_attributes is None:
         feature_attributes = []
     attributes = [target_attribute] + feature_attributes
+    missing_attributes = [col for col in attributes if col not in df.columns]
+    for col in missing_attributes:
+        df[col] = 0
+    print("attributes", attributes)
     df = df[["timestamp"] + attributes]
 
     # Forward fill missing values for feature attributes

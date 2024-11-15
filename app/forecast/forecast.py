@@ -60,7 +60,7 @@ def forecast(
     tz = pytz.timezone("Europe/Berlin")
     model_filename = f"LSTM_model_{asset_id}_{target_column}_{forecast_length}.keras"
     batch_size = 1  # Setting batch size to 1 for stateful LSTM
-    timestamp_diff_buffer = timedelta(days=1.5)
+    timestamp_diff_buffer = timedelta(days=5)
 
     while True:
         if os.path.exists(model_filename):

@@ -20,29 +20,49 @@ def background_worker(SessionLocal, Asset):
     create_asset(
         SessionLocal,
         Asset,
-        "K01_WP01-f957bc0acd6b3994",
-        "Aussentemperatur",
-        5,
-        # hyperparameters={
-        #     "max_trials": 2,
-        # },
-        # trainingparameters={
-        #     "epochs": 10,
-        #     "patience": 5,
-        #     "validation_split": 0.2,
-        # },
-        # feature_attributes=[
-        #     "Ladekreis Temperatur RL",
-        #     "Ladekreis Temperatur VL",
-        #     "Quelle Temperatur RL",
-        # ],
-        # parameters={
-        #     "epochs": 51,
-        #     "patience": 4,
-        #     "validation_split": 0.2,
-        #     "learning_rate": 0.0001,
-        #     # Add more parameters as needed
-        # },
+        "Weather",
+        "temperature_2m",
+        context_length=24,
+        forecast_length=24,
+        hyperparameters={
+            "max_trials": 100,
+        },
+        trainingparameters={
+            "epochs": 50,
+            "patience": 5,
+            "validation_split": 0.2,
+        },
+        feature_attributes=[
+            "snowfall",
+            "relative_humidity_2m",
+            "rain",
+            "cloud_cover",
+            "wind_speed_10m",
+        ],
+        start_date="2010-01-01",
+    )
+    create_asset(
+        SessionLocal,
+        Asset,
+        "BTCUSD",
+        "close_diff",
+        context_length=24,
+        forecast_length=1,
+        hyperparameters={
+            "max_trials": 100,
+        },
+        trainingparameters={
+            "epochs": 50,
+            "patience": 5,
+            "validation_split": 0.2,
+        },
+        feature_attributes=[
+            "high_diff",
+            "low_diff",
+            "open_diff",
+            "volume_diff",
+        ],
+        start_date="2010-01-01",
     )
     with SessionLocal() as session:
         # Fetch all assets marked as 'new'
@@ -59,6 +79,12 @@ def background_worker(SessionLocal, Asset):
             1,
             processing_status="new",
         )
+        # update_asset(
+        #     SessionLocal,
+        #     Asset,
+        #     2,
+        #     processing_status="new",
+        # )
     while True:
         with SessionLocal() as session:
             # Fetch all assets marked as 'new'
@@ -84,7 +110,7 @@ def background_worker(SessionLocal, Asset):
 
                 id = asset_details["id"]
                 sleep_time_forecast = 60  # 1 minute
-                sleep_time_train = 86400  # 24 hours
+                sleep_time_train = 3600  # 24 hours
 
                 # Update the asset's status to 'processing'
                 session.execute(
