@@ -4,7 +4,16 @@ from sqlalchemy.exc import IntegrityError
 # Set up logging
 logging.basicConfig(level=logging.INFO)
 
-from sqlalchemy import Table, Column, Integer, String, JSON, Date, TIMESTAMP, MetaData
+from sqlalchemy import (
+    Table,
+    Column,
+    Integer,
+    String,
+    JSON,
+    Date,
+    TIMESTAMP,
+    BLOB,
+)
 
 
 # Define the Asset table using SQLAlchemy
@@ -19,9 +28,14 @@ def create_asset_table(metadata, engine):
         Column("forecast_length", Integer, nullable=False),
         Column("start_date", Date),
         Column("parameters", JSON),
+        Column("datalength", Integer),
         Column("hyperparameters", JSON),
+        Column("trainingparameters", JSON),
         Column("latest_timestamp", TIMESTAMP),
         Column("context_length", Integer),
+        Column("processing_status", String(255)),
+        Column("scaler", BLOB),
+        Column("state", BLOB),
         schema="forecast",
         autoload_with=engine,
     )
@@ -99,11 +113,16 @@ def create_asset(
     target_attribute: str,
     forecast_length: int,
     feature_attributes: dict = None,
-    start_date: str = None,
+    start_date: str = "2024-11-1",
     parameters: dict = None,
+    datalength: int = None,
     hyperparameters: dict = None,
+    trainingparameters: dict = None,
     latest_timestamp: str = None,
     context_length: int = None,
+    processing_status: str = "new",
+    scaler: bytes = None,
+    state: bytes = None,
 ):
     logging.info(
         f"Creating new asset with GAI {gai}, target attribute {target_attribute}, and forecast length {forecast_length}"
@@ -117,9 +136,14 @@ def create_asset(
         forecast_length=forecast_length,
         start_date=start_date,
         parameters=parameters,
+        datalength=datalength,
         hyperparameters=hyperparameters,
+        trainingparameters=trainingparameters,
         latest_timestamp=latest_timestamp,
         context_length=context_length,
+        processing_status=processing_status,
+        scaler=scaler,
+        state=state,
     )
 
     with SessionLocal() as session:
@@ -138,15 +162,20 @@ def update_asset(
     SessionLocal,
     Asset,
     id: int,
-    gai: str,
-    target_attribute: str,
-    forecast_length: int,
+    gai: str = None,
+    target_attribute: str = None,
+    forecast_length: int = None,
     feature_attributes: dict = None,
     start_date: str = None,
     parameters: dict = None,
+    datalength: int = None,
     hyperparameters: dict = None,
+    trainingparameters: dict = None,
     latest_timestamp: str = None,
     context_length: int = None,
+    processing_status: str = None,
+    scaler: bytes = None,
+    state: bytes = None,
 ):
     logging.info(f"Updating asset with ID {id}")
 
@@ -155,22 +184,43 @@ def update_asset(
         if db_asset is None:
             raise ValueError(f"Asset with ID {id} not found.")
 
+        # Build a dictionary of values to update, excluding None values
+        update_values = {}
+        if gai is not None:
+            update_values["gai"] = gai
+        if target_attribute is not None:
+            update_values["target_attribute"] = target_attribute
+        if forecast_length is not None:
+            update_values["forecast_length"] = forecast_length
+        if feature_attributes is not None:
+            update_values["feature_attributes"] = feature_attributes
+        if start_date is not None:
+            update_values["start_date"] = start_date
+        if parameters is not None:
+            update_values["parameters"] = parameters
+        if datalength is not None:
+            update_values["datalength"] = datalength
+        if hyperparameters is not None:
+            update_values["hyperparameters"] = hyperparameters
+        if trainingparameters is not None:
+            update_values["trainingparameters"] = trainingparameters
+        if latest_timestamp is not None:
+            update_values["latest_timestamp"] = latest_timestamp
+        if context_length is not None:
+            update_values["context_length"] = context_length
+        if processing_status is not None:
+            update_values["processing_status"] = processing_status
+        if scaler is not None:
+            update_values["scaler"] = scaler
+        if state is not None:
+            update_values["state"] = state
+
+        if not update_values:
+            logging.warning(f"No values provided to update for asset ID {id}")
+            return
+
         # Update the asset with the new values
-        update_query = (
-            Asset.update()
-            .where(Asset.c.id == id)
-            .values(
-                gai=gai,
-                target_attribute=target_attribute,
-                feature_attributes=feature_attributes,
-                forecast_length=forecast_length,
-                start_date=start_date,
-                parameters=parameters,
-                hyperparameters=hyperparameters,
-                latest_timestamp=latest_timestamp,
-                context_length=context_length,
-            )
-        )
+        update_query = Asset.update().where(Asset.c.id == id).values(**update_values)
 
         session.execute(update_query)
         session.commit()
