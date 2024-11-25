@@ -172,3 +172,29 @@ def save_parameters(SessionLocal, Asset, parameters, asset_details):
 
     # Update asset_details with new parameters
     asset_details["parameters"] = existing_parameters
+
+
+def set_processing_status(SessionLocal, Asset, asset_details, status):
+    """
+    Updates the processing status of the asset.
+
+    Args:
+        SessionLocal: Database session
+        Asset: Asset model
+        asset_details: Current asset details
+        status: New processing status
+    """
+    update_asset(SessionLocal, Asset, id=asset_details["id"], processing_status=status)
+
+
+def get_processing_status(SessionLocal, Asset, asset_details):
+    """
+    Retrieves the processing status of the asset.
+
+    Args:
+        SessionLocal: Database session
+        Asset: Asset model
+        asset_details: Current asset details
+    """
+    asset = get_asset_by_id(SessionLocal, Asset, asset_details["id"])
+    return asset.processing_status

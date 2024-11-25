@@ -4,7 +4,6 @@ from datetime import timedelta
 import eliona.api_client2
 from eliona.api_client2.rest import ApiException
 from eliona.api_client2.api.data_api import DataApi
-import pytz
 import os
 from sklearn.preprocessing import MinMaxScaler
 
@@ -286,7 +285,8 @@ def prepare_data(
     # Extract the last Y's timestamp
     last_timestamp = data["timestamp"].iloc[len(data) - forecast_length]
     last_timestamp = pd.to_datetime(last_timestamp)
-
+    print("X_shape", X.shape)
+    print("Y_shape", Y.shape)
     return X, Y, scalers, last_timestamp
 
 
@@ -388,5 +388,6 @@ def prepare_data_for_forecast(
     else:
         new_next_timestamp = None
         print("Insufficient data for timestamp calculation.")
-
+    print("X_update_shape", X_update.shape)
+    print("X_last_shape", X_last.shape)
     return X_update, X_last, new_next_timestamp, last_y_timestamp_new

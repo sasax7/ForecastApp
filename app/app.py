@@ -4,97 +4,23 @@ from multiprocessing import Process
 import sys
 import os
 from api.api_calls import update_asset, create_asset
+import logging
 
-# Add the current directory to sys.path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from api.api_calls import get_all_assets
 from app.data_to_eliona.add_forecast_attributes import (
     add_forecast_attributes_to_all_assets,
 )
 from app.forecast.forecast import forecast
-from app.train.train_and_retrain import train_and_retrain
+from app.train_and_retrain.train_and_retrain import train_and_retrain
+from app.data_to_eliona.create_asset_to_save_models import create_asset_to_save_models
 
 
-def background_worker(SessionLocal, Asset):
-    create_asset(
-        SessionLocal,
-        Asset,
-        "Weather",
-        "temperature_2m",
-        context_length=24,
-        forecast_length=24,
-        hyperparameters={
-            "max_trials": 100,
-        },
-        trainingparameters={
-            "epochs": 50,
-            "patience": 5,
-            "validation_split": 0.2,
-        },
-        feature_attributes=[
-            "snowfall",
-            "relative_humidity_2m",
-            "rain",
-            "cloud_cover",
-            "wind_speed_10m",
-            "hour_of_day_sin",
-            "hour_of_day_cos",
-            "day_of_week_sin",
-            "day_of_week_cos",
-            "day_of_month_sin",
-            "day_of_month_cos",
-            "month_of_year_sin",
-            "month_of_year_cos",
-            "day_of_year_sin",
-            "day_of_year_cos",
-        ],
-        start_date="2024-10-01",
-    )
-    create_asset(
-        SessionLocal,
-        Asset,
-        "BTCUSD",
-        "close_diff",
-        context_length=24,
-        forecast_length=1,
-        hyperparameters={
-            "max_trials": 100,
-        },
-        trainingparameters={
-            "epochs": 50,
-            "patience": 5,
-            "validation_split": 0.2,
-        },
-        feature_attributes=[
-            "high_diff",
-            "low_diff",
-            "open_diff",
-            "volume_diff",
-        ],
-        start_date="2024-10-01",
-    )
-    with SessionLocal() as session:
-        # Fetch all assets marked as 'new'
-        new_assets = session.execute(Asset.select()).fetchall()
+logger = logging.getLogger(__name__)
 
-        # Convert each row to a dictionary
-        new_assets_dict = [dict(row._mapping) for row in new_assets]
-    all_assets_with_asset_id = add_forecast_attributes_to_all_assets(new_assets_dict)
 
-    for asset_id, asset_details in all_assets_with_asset_id:
-        update_asset(
-            SessionLocal,
-            Asset,
-            1,
-            processing_status="new",
-        )
-        update_asset(
-            SessionLocal,
-            Asset,
-            2,
-            processing_status="new",
-        )
+def app_background_worker(SessionLocal, Asset):
+    logger.info("app_background_worker started")
     while True:
         with SessionLocal() as session:
             # Fetch all assets marked as 'new'
@@ -113,14 +39,13 @@ def background_worker(SessionLocal, Asset):
             all_assets_with_asset_id = add_forecast_attributes_to_all_assets(
                 new_assets_dict
             )
+            create_asset_to_save_models()
 
             for asset_id, asset_details in all_assets_with_asset_id:
                 logging.info(f"Asset ID: {asset_id}")
                 logging.info(f"Asset details: {asset_details}")
 
                 id = asset_details["id"]
-                sleep_time_forecast = 60  # 1 minute
-                sleep_time_train = 3600  # 24 hours
 
                 # Update the asset's status to 'processing'
                 session.execute(
@@ -136,7 +61,6 @@ def background_worker(SessionLocal, Asset):
                     args=(
                         asset_details,
                         asset_id,
-                        sleep_time_forecast,
                     ),
                 )
 
@@ -145,7 +69,6 @@ def background_worker(SessionLocal, Asset):
                     args=(
                         asset_details,
                         asset_id,
-                        sleep_time_train,
                     ),
                 )
 

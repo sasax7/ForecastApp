@@ -155,8 +155,8 @@ def serialize_model_to_bytes(model):
     import tempfile
     import os
 
-    # Create a temporary file with .h5 extension
-    with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp_file:
+    # Create a temporary file with .keras extension
+    with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as tmp_file:
         temp_filename = tmp_file.name
 
     try:
@@ -215,7 +215,7 @@ def load_model_from_eliona(file_name):
         print(f"Decoded model bytes for '{file_name}'.")
 
         # Write the bytes to a temporary file
-        with tempfile.NamedTemporaryFile(suffix=".h5", delete=False) as tmp_file:
+        with tempfile.NamedTemporaryFile(suffix=".keras", delete=False) as tmp_file:
             temp_filename = tmp_file.name
             tmp_file.write(model_bytes)
 
@@ -223,7 +223,8 @@ def load_model_from_eliona(file_name):
             # Load the model from the temporary file
             model = tf.keras.models.load_model(temp_filename)
             print(f"TensorFlow model '{file_name}' loaded successfully.")
-
+            model.compile()
+            print("Model compiled with saved parameters.")
             return model
         finally:
             # Delete the temporary file
