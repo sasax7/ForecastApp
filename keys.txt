@@ -1,6 +1,1 @@
-.\venv\Scripts\Activate.ps1
-$env:CONNECTION_STRING="postgres://eliona:h2WGqWQ4@65.109.128.168:31432/iot"
-$env:API_ENDPOINT="https://develop.eliona.io/api/v2"
-$env:API_TOKEN="FOKlCIwXDNPvI6Ng9CHoOjlZvCypQYZA"
-$env:API_SERVER_PORT=3000
-python .\main.py
+
