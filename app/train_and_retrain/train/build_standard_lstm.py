@@ -41,7 +41,7 @@ def build_lstm_model(
     use_batch_norm = parameters.get("use_batch_norm", False)
     metrics = parameters.get("metrics", ["mse"])
     stateful = parameters.get("stateful", True)
-    batch_size = 1
+    batch_size = parameters.get("batch_size", 1)
     print("all parameters:")
     print("num_lstm_layers", num_lstm_layers)
     print("lstm_units", lstm_units)

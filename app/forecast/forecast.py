@@ -63,7 +63,12 @@ def forecast(asset_details, asset_id):
             processing_status = get_processing_status(
                 SessionLocal, Asset, asset_details
             )
-            if "training" in processing_status and processing_status != "done_training":
+            if "Saving" in processing_status:
+                print("Model is currently being saved in training. dont change status")
+
+            elif (
+                "training" in processing_status and processing_status != "done_training"
+            ):
                 set_processing_status(
                     SessionLocal, Asset, asset_details, "forecasting_and_training"
                 )
@@ -155,8 +160,8 @@ def forecast(asset_details, asset_id):
             processing_status = get_processing_status(
                 SessionLocal, Asset, asset_details
             )
-            if "training" in processing_status and processing_status != "done_training":
-                print("Model is still training. Skipping saving.")
+            if "Saving" in processing_status:
+                print("Model is currently being saved in training. Skipping saving.")
             else:
                 save_latest_timestamp(
                     SessionLocal, Asset, last_y_timestamp, tz, asset_details

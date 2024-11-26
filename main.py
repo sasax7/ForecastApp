@@ -23,6 +23,7 @@ def start_background_tasks():
         # Ensure that any multiprocessing setup is done properly here
         db.create_schema_and_table()
 
+        #
         register_app.Initialize()
 
         logger.info("API started")
